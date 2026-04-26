@@ -1,33 +1,59 @@
 name: Build APK
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Setup Node
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    - run: npm install
+      - name: Install npm dependencies
+        run: npm install
 
-    - run: npx cap add android
-    - run: npx cap copy android
+      - name: Install Capacitor Android package
+        run: npm install @capacitor/android
 
-    - name: Build APK
-      run: |
-        cd android
-        ./gradlew assembleDebug
+      - name: Add Android platform if missing
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: app-debug.apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Sync Capacitor project
+        run: npx cap sync android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsv2-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
